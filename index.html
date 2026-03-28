@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Climate Hub - Parthipan</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
+    <style>
+        body { background-color: #0f172a; }
+        .glass { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.1); }
+    </style>
+</head>
+<body class="text-white min-h-screen flex flex-col items-center justify-center p-6">
+
+    <div class="text-center mb-10">
+        <h1 class="text-4xl font-black tracking-tighter text-cyan-400 uppercase">Climate AI Dashboard</h1>
+        <p id="status" class="text-slate-500 text-sm mt-2">Connecting to Secure Cloud...</p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-3xl">
+        <div class="glass p-10 rounded-3xl text-center shadow-2xl">
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Temperature</p>
+            <div class="text-7xl font-light"><span id="temp">--</span><span class="text-2xl text-cyan-500 ml-1">°C</span></div>
+        </div>
+        <div class="glass p-10 rounded-3xl text-center shadow-2xl">
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Humidity</p>
+            <div class="text-7xl font-light"><span id="hum">--</span><span class="text-2xl text-emerald-500 ml-1">%</span></div>
+        </div>
+    </div>
+
+    <button onclick="startVoice()" class="mt-16 px-12 py-4 bg-gradient-to-r from-cyan-600 to-blue-600 rounded-full font-bold shadow-lg hover:shadow-cyan-500/40 transition-all active:scale-95">
+        🎙️ ASK AI ASSISTANT
+    </button>
+    <p id="v-status" class="mt-4 text-slate-500 italic">"What is the status?"</p>
+
+    <script>
+        // --- SECURE MQTT CONFIG ---
+        const client = new Paho.MQTT.Client(
+            "8adc2cc578ae451fa77a22216d9d621c.s1.eu.hivemq.cloud", 
+            Number(8884), 
+            "web_client_" + Math.random()
+        );
+
+        const options = {
+            useSSL: true,
+            userName: "Parthipan",
+            password: "yvNwrN4972iuy@s", // <--- REPLACE THIS WITH YOUR SECRET PASSWORD
+            onSuccess: () => {
+                console.log("Connected!");
+                client.subscribe("parthipan/temp");
+                client.subscribe("parthipan/hum");
+                document.getElementById('status').innerText = "System Online • Secure Connection";
+                document.getElementById('status').classList.remove('text-slate-500');
+                document.getElementById('status').classList.add('text-emerald-400');
+            },
+            onFailure: (err) => {
+                document.getElementById('status').innerText = "Connection Failed: Check Password";
+                console.log(err);
+            }
+        };
+
+        client.connect(options);
+
+        client.onMessageArrived = (msg) => {
+            if (msg.destinationName === "parthipan/temp") document.getElementById('temp').innerText = msg.payloadString;
+            if (msg.destinationName === "parthipan/hum") document.getElementById('hum').innerText = msg.payloadString;
+        };
+
+        // --- VOICE ASSISTANT ---
+        function startVoice() {
+            const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+            recognition.start();
+            document.getElementById('v-status').innerText = "Listening...";
+
+            recognition.onresult = (event) => {
+                const speech = event.results[0][0].transcript.toLowerCase();
+                if (speech.includes("status") || speech.includes("report")) {
+                    const t = document.getElementById('temp').innerText;
+                    const h = document.getElementById('hum').innerText;
+                    speak(`The current temperature is ${t} degrees and the humidity is ${h} percent.`);
+                }
+                document.getElementById('v-status').innerText = "Last command: " + speech;
+            };
+        }
+
+        function speak(text) {
+            const utter = new SpeechSynthesisUtterance(text);
+            window.speechSynthesis.speak(utter);
+        }
+    </script>
+</body>
+</html>
